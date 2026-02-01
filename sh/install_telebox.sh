@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# 下载脚本，赋予权限，并运行
+#使用此链接安装wget -O install.sh https://raw.githubusercontent.com/Hollowwill521/scripts/refs/heads/main/sh/install_telebox.sh && chmod +x install.sh && ./install.sh
 # =================================================================
 # TeleBox Pro 部署助手 V3.0 (交互登录增强版)
 # 特性：支持多步验证码输入、Ctrl+C 防中断、智能多开
