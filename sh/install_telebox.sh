@@ -57,7 +57,7 @@ detect_next_instance() {
     done
 
     # 嗅探安全的空闲端口
-    NEXT_PORT=8080
+    NEXT_PORT=18080
     while true; do
         if ss -tuln | grep -q ":$NEXT_PORT " ; then
             ((NEXT_PORT++))
