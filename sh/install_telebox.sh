@@ -1,9 +1,9 @@
 #!/bin/bash
 # 下载脚本，赋予权限，并运行
-#使用此链接安装wget -O install.sh https://raw.githubusercontent.com/Hollowwill521/scripts/refs/heads/main/sh/install_telebox.sh && chmod +x install.sh && ./install.sh
+# 使用此链接安装: wget -O install.sh https://raw.githubusercontent.com/Hollowwill521/scripts/refs/heads/main/sh/install_telebox.sh && chmod +x install.sh && ./install.sh
 # =================================================================
 # TeleBox Pro 部署助手 V4.0 (终极雷达防冲突版)
-# 特性：自动避让占用端口/目录、支持多步验证码、Ctrl+C 防中断
+# 特性：自动避让占用端口/目录、支持多步验证码、Ctrl+C 防中断、修复N/A
 # =================================================================
 
 RED='\033[0;31m'
@@ -106,7 +106,7 @@ git clone https://github.com/TeleBoxOrg/TeleBox.git "$INSTALL_PATH"
 sudo chown -R $CURRENT_USER:$USER_GROUP "$INSTALL_PATH"
 cd "$INSTALL_PATH"
 
-# --- 处理 Config ---
+# --- 处理 Config 与 Ecosystem ---
 if [[ "$MODE" == "1" ]]; then
     echo -e "\n${YELLOW}>>> 填写配置 <<<${NC}"
     [[ -f "config.example.json" ]] && cp config.example.json config.json || echo '{}' > config.json
@@ -119,21 +119,13 @@ if [[ "$MODE" == "1" ]]; then
     read -p "确认端口号 (雷达建议 $NEXT_PORT): " INPUT_PORT
     PORT=${INPUT_PORT:-$NEXT_PORT}
 
-elif [[ "$MODE" == "2" ]]; then
-    echo -e "\n${YELLOW}>>> 恢复备份 <<<${NC}"
-    read -p "请输入备份路径: " BACKUP_PATH
-    cp -f "$BACKUP_PATH/config.json" "$INSTALL_PATH/"
-    CONF_PORT=$(grep -oE '"port": *[0-9]+' config.json | awk -F: '{print $2}' | tr -d ' ,')
-    PORT=${CONF_PORT:-$NEXT_PORT}
-fi
-
-# 生成 PM2 Ecosystem
-cat > ecosystem.config.js <<EOF
+    # 全新安装时：使用智能识别 package.json 的启动方式，解决 N/A 问题
+    cat > ecosystem.config.js <<EOF
 module.exports = {
   apps : [{
     name: "$BOX_NAME",
-    script: "npm",
-    args: "run start",
+    script: "node_modules/.bin/tsx",
+    args: "src/index.ts",
     cwd: "$INSTALL_PATH",
     env: { NODE_ENV: "production", PORT: $PORT },
     autorestart: true,
@@ -142,6 +134,38 @@ module.exports = {
   }]
 };
 EOF
+
+elif [[ "$MODE" == "2" ]]; then
+    echo -e "\n${YELLOW}>>> 恢复备份 <<<${NC}"
+    read -p "请输入备份路径: " BACKUP_PATH
+    cp -f "$BACKUP_PATH/config.json" "$INSTALL_PATH/"
+    CONF_PORT=$(grep -oE '"port": *[0-9]+' config.json | awk -F: '{print $2}' | tr -d ' ,')
+    PORT=${CONF_PORT:-$NEXT_PORT}
+    
+    # 【修复重点】：优先恢复原版的 ecosystem，如果原版不存在才自动生成
+    if [[ -f "$BACKUP_PATH/ecosystem.config.js" ]]; then
+        echo -e "${GREEN}检测到原版 ecosystem 配置，正在应用并自动修正路径...${NC}"
+        cp -f "$BACKUP_PATH/ecosystem.config.js" "$INSTALL_PATH/"
+        sed -i "s|cwd:.*|cwd: '$INSTALL_PATH',|g" "$INSTALL_PATH/ecosystem.config.js"
+        sed -i "s|name:.*|name: '$BOX_NAME',|g" "$INSTALL_PATH/ecosystem.config.js"
+    else
+        # 兜底生成
+        cat > ecosystem.config.js <<EOF
+module.exports = {
+  apps : [{
+    name: "$BOX_NAME",
+    script: "node_modules/.bin/tsx",
+    args: "src/index.ts",
+    cwd: "$INSTALL_PATH",
+    env: { NODE_ENV: "production", PORT: $PORT },
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G'
+  }]
+};
+EOF
+    fi
+fi
 
 # --- 安装依赖 ---
 echo -e "\n${YELLOW}>>> 安装项目依赖 <<<${NC}"
