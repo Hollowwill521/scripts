@@ -8,7 +8,33 @@ WidgetMetadata = {
   site: "https://t.me/Hollowwill_Q",
   detailCacheDuration: 3600,
   globalParams: [
-    { name: "baidu_cookie", title: "百度 Cookie", type: "input", value: "" }
+    { name: "host", title: "站点地址", type: "input", value: "https://www.miqk.cc" },
+    { name: "pan_hosts", title: "备用网盘站", type: "input", value: "https://mihdr.top,https://www.2xiaopan.top" },
+    { name: "baidu_cookie", title: "百度 Cookie", type: "input", value: "" },
+    { name: "baidu_max_files", title: "百度最多解析", type: "input", value: "2" },
+    { name: "search_extra_after_hit", title: "命中后继续扫描", type: "input", value: "3" },
+    {
+      name: "load_speed_mode",
+      title: "加载速度",
+      type: "enumeration",
+      value: "fast",
+      enumOptions: [
+        { title: "极速（找到一个就返回）", value: "fast" },
+        { title: "普通（返回多个大小）", value: "full" }
+      ]
+    },
+    {
+      name: "quality_tag",
+      title: "清晰度标签",
+      type: "enumeration",
+      value: "8k",
+      enumOptions: [
+        { title: "8K", value: "8k" },
+        { title: "4K", value: "4k" },
+        { title: "1080P", value: "1080p" },
+        { title: "其他", value: "other" }
+      ]
+    }
   ],
   modules: [
     {
@@ -108,7 +134,7 @@ function zzStorageSet(key, value) {
 }
 
 function zzHost(params) {
-  return ZZ_PRIMARY_HOST;
+  return String((params && params.host) || ZZ_RUNTIME_PARAMS.host || ZZ_PRIMARY_HOST).replace(/\/+$/, "");
 }
 
 function zzOrigin(url) {
@@ -137,12 +163,14 @@ function zzPanHosts(params) {
     if (host && out.indexOf(host) < 0) out.push(host);
   }
   add(zzHost(params));
-  for (var i = 0; i < ZZ_DEFAULT_PAN_HOSTS.length; i++) add(ZZ_DEFAULT_PAN_HOSTS[i]);
+  var configured = zzSplitHosts((params && params.pan_hosts) || ZZ_RUNTIME_PARAMS.pan_hosts || "");
+  if (!configured.length) configured = ZZ_DEFAULT_PAN_HOSTS;
+  for (var i = 0; i < configured.length; i++) add(configured[i]);
   return out;
 }
 
 function loadSpeedMode(params) {
-  var value = ZZ_BUILTIN_LOAD_SPEED_MODE;
+  var value = zzText((params && params.load_speed_mode) || ZZ_RUNTIME_PARAMS.load_speed_mode || ZZ_BUILTIN_LOAD_SPEED_MODE).toLowerCase();
   return /^(full|complete|all|slow|off)$/i.test(value) ? "full" : "fast";
 }
 
@@ -785,7 +813,8 @@ function sourceEpisodeText(name, description, meta) {
 }
 
 function sourceQualityConfig(params) {
-  var value = ZZ_BUILTIN_QUALITY_TAG;
+  params = params || ZZ_RUNTIME_PARAMS || {};
+  var value = zzText(params.quality_tag || params.qualityTag || params.display_quality || params.source_quality || ZZ_BUILTIN_QUALITY_TAG).toLowerCase();
   if (value === "4k") {
     return { value: "4k", label: "4K", tag: "4k", resolutionId: "4k", resolution: "3840x2160", width: 3840, height: 2160 };
   }
@@ -1716,7 +1745,7 @@ function panEnabled(type, params) {
 
 function sourceLimitForPan(type, params) {
   if (type === "百度" && fastLoadEnabled(params)) return 1;
-  var limit = type === "百度" ? ZZ_BUILTIN_BAIDU_MAX_FILES : 1;
+  var limit = type === "百度" ? Math.max(1, zzToInt(params && params.baidu_max_files, ZZ_BUILTIN_BAIDU_MAX_FILES)) : 1;
   return limit;
 }
 
@@ -1745,7 +1774,7 @@ function candidateScanLimit(params) {
 
 function searchExtraAfterHit(params) {
   if (fastLoadEnabled(params)) return 0;
-  return ZZ_BUILTIN_SEARCH_EXTRA_AFTER_HIT;
+  return zzBoundInt(params && params.search_extra_after_hit, ZZ_BUILTIN_SEARCH_EXTRA_AFTER_HIT, 0, 40);
 }
 
 function shouldKeepPanLine(type, params) {
@@ -2714,13 +2743,13 @@ function resourceCacheKey(params, panType) {
     params.name || "",
     params.episodeName || "",
     zzWantedEpisode(params) || params.episode || "",
-    ZZ_PRIMARY_HOST,
-    ZZ_DEFAULT_PAN_HOSTS.join(","),
-    ZZ_BUILTIN_BAIDU_MAX_FILES,
-    ZZ_BUILTIN_CANDIDATE_SCAN_LIMIT,
-    ZZ_BUILTIN_SEARCH_EXTRA_AFTER_HIT,
-    ZZ_BUILTIN_LOAD_SPEED_MODE,
-    ZZ_BUILTIN_QUALITY_TAG,
+    zzHost(params),
+    zzPanHosts(params).join(","),
+    params.baidu_max_files || ZZ_BUILTIN_BAIDU_MAX_FILES,
+    candidateScanLimit(params),
+    params.search_extra_after_hit || ZZ_BUILTIN_SEARCH_EXTRA_AFTER_HIT,
+    loadSpeedMode(params),
+    sourceQualityConfig(params).value,
     !!baiduCookie(params)
   ].join("||");
 }
