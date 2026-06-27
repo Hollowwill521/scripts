@@ -6,7 +6,7 @@ WidgetMetadata = {
   description: "搜索至臻[盘]影视资源，自动转存夸克分享并返回可播放源。",
   author: "TG@Hollowwill",
   site: "https://t.me/Hollowwill_Q",
-  detailCacheDuration: 0,
+  detailCacheDuration: 3600,
   globalParams: [
     { name: "host", title: "站点地址", type: "input", value: "https://www.miqk.cc" },
     { name: "pan_hosts", title: "备用网盘站", type: "input", value: "https://mihdr.top,https://www.2xiaopan.top,http://4kzn.com" },
