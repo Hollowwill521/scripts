@@ -5,6 +5,8 @@
 #!tag=360摄像机,广告净化
 
 [Rule]
+DOMAIN,shop177583286.youzan.com,REJECT,extended-matching,pre-matching
+DOMAIN,shop177583286.m.youzan.com,REJECT,extended-matching,pre-matching
 DOMAIN,ad.jia.360.cn,REJECT,extended-matching,pre-matching
 DOMAIN,ad.iot.360.cn,REJECT,extended-matching,pre-matching
 
